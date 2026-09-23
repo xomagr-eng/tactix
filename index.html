@@ -219,12 +219,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 #present.on{display:flex}
 .pr-top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .pr-top .name{font-size:clamp(17px,2.3vw,30px);font-weight:800}
-.pr-body{flex:1;display:grid;grid-template-columns:1.25fr 1fr;gap:22px;padding:18px 26px;overflow:auto;min-height:0}
-@media(max-width:900px){.pr-body{grid-template-columns:1fr;padding:12px 14px;gap:12px}}
-.pr-pitch{display:flex;align-items:center;justify-content:center;min-height:0}
-.pr-pitch svg{max-height:72vh;width:auto;max-width:100%}
-@media(max-width:900px){.pr-pitch svg{max-height:44vh}}
-.pr-panel{display:flex;flex-direction:column;justify-content:center}
+.pr-body{flex:1;display:flex;gap:22px;padding:16px 26px;overflow:hidden;min-height:0}
+.pr-pitch{flex:1.2;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
+.pr-pitch svg{max-width:100%;max-height:100%;width:auto;height:auto}
+.pr-panel{flex:1;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:900px){
+  .pr-body{flex-direction:column;padding:10px 12px;gap:8px;overflow:auto}
+  .pr-pitch{flex:0 0 auto;max-height:48vh}
+  .pr-pitch svg{max-height:48vh}
+  .pr-panel{flex:1 1 auto;justify-content:flex-start}
+}
 .pr-phase{font-size:clamp(20px,3vw,38px);font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pr-list{margin:0;padding-left:26px}
 .pr-list li{font-size:clamp(15px,1.85vw,25px);line-height:1.5;margin-bottom:14px}

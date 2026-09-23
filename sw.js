@@ -1,5 +1,5 @@
 /* TACTIX — Service Worker (offline cache) */
-const CACHE = "tactix-v8";
+const CACHE = "tactix-v9";
 const ASSETS = [
   "./",
   "./index.html",
