@@ -200,5 +200,5 @@ const Pitch = (() => {
 
   function esc(s){return (s+"").replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
 
-  return { render, roleColor };
+  return { render, roleColor, toXY:(dx,dy)=>({x:fx(dx), y:fy(dy)}) };
 })();

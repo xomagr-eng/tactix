@@ -63,7 +63,7 @@ header{
 
 nav{
   display:flex;gap:4px;padding:8px 14px;background:var(--bg2);
-  border-bottom:1px solid var(--line);position:sticky;top:69px;z-index:40;overflow-x:auto;
+  border-bottom:1px solid var(--line);position:sticky;top:var(--hdr,69px);z-index:40;overflow-x:auto;
 }
 nav button{
   background:transparent;border:1px solid transparent;color:var(--mut);
@@ -86,6 +86,14 @@ main{padding:20px;max-width:1500px;margin:0 auto}
 .g4{grid-template-columns:repeat(4,1fr)}
 @media(max-width:1100px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* Tablet οριζόντια (κάθε ίντσα: 1024×768, 1280×800, 1366×1024...): πολλαπλές στήλες + two-pane */
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 561px){
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .board-wrap{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+  main{max-width:100%}
+}
 
 .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
 .card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -256,6 +264,41 @@ tr:hover td{background:rgba(255,255,255,.02)}
 #board #boardPitch{position:absolute;inset:0;display:grid;place-items:center}
 #board #pitch{touch-action:none;box-shadow:0 8px 40px rgba(0,0,0,.5)}
 
+
+/* ===== Οριζόντια θέση σε κινητό (landscape): λεπτή κεφαλίδα, γήπεδο στο ύψος της οθόνης, 2 στήλες ===== */
+@media (orientation:landscape) and (max-height:560px){
+  header{position:static;padding:5px 12px;gap:10px;box-shadow:none}
+  .badge{width:32px;height:32px;border-radius:9px}
+  .brand h1{font-size:15px}.brand small{display:none}
+  .top-actions{gap:6px}.top-actions .btn{padding:5px 9px;font-size:12px}
+  .club-pill{padding:3px 10px 3px 4px;font-size:12px}.club-dot{width:22px;height:22px;font-size:11px}
+  nav{top:0;padding:4px 10px}
+  nav button{padding:6px 11px;font-size:12.5px}
+  main{padding:10px 14px}
+  .g2{grid-template-columns:repeat(2,1fr)}.g3,.g4{grid-template-columns:repeat(3,1fr)}
+  .board-wrap{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:start}
+  #pitch{max-height:calc(100vh - 64px);width:auto;max-width:100%;margin:0 auto}
+  /* ταμπλό: εργαλεία αριστερά, γήπεδο δεξιά σε όλο το ύψος της οθόνης */
+  #boardArea,#designerBoard,#playBoard,#matchPitch{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:start}
+  #boardArea>:not(#pitch),#designerBoard>:not(#pitch),#playBoard>:not(#pitch),#matchPitch>:not(#pitch){grid-column:1}
+  #boardArea>#pitch,#designerBoard>#pitch,#playBoard>#pitch,#matchPitch>#pitch{grid-column:2;grid-row:1 / span 6;height:calc(100vh - 76px);width:auto;aspect-ratio:100 / 150}
+  #boardArea .tools .sub,#designerBoard .tools .sub,#playBoard .tools .sub{display:none}
+  .board-wrap>.card:first-child{padding:10px}
+  .pr-body{flex-direction:row;padding:8px 14px;gap:14px;overflow:hidden}
+  .pr-pitch{flex:1;max-height:none}.pr-pitch svg{max-height:calc(100vh - 110px)}
+  .pr-panel{justify-content:flex-start;overflow:auto}
+  .pr-top{padding:6px 12px}.pr-foot{padding:6px 12px}
+  .modal{max-height:calc(100vh - 16px);overflow:auto}
+}
+.fs-btn{font-size:15px;line-height:1}
+/* Κινητό κάθετα: πιο λεπτή κεφαλίδα (κρύβεται ο υπότιτλος, μικρότερα κουμπιά) */
+@media (max-width:560px) and (orientation:portrait){
+  header{padding:8px 12px;gap:8px}
+  .badge{width:36px;height:36px;border-radius:10px}
+  .brand h1{font-size:16px}.brand small{display:none}
+  .top-actions{gap:5px}.top-actions .btn{padding:5px 8px;font-size:12px}
+  .club-pill{padding:3px 9px 3px 4px;font-size:12px}.club-dot{width:22px;height:22px;font-size:11px}
+}
 /* ===== Print / PDF ===== */
 #printArea{display:none}
 .pdoc{color:#111;font-size:13px;max-width:780px;margin:0 auto}
@@ -305,6 +348,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <span class="club-dot" id="clubDot">FC</span>
       <span id="clubName">Η Ομάδα μου</span>
     </div>
+    <button class="btn sm ghost fs-btn" id="fsBtn" onclick="App.fullscreen()" title="Πλήρης οθόνη">⛶</button>
     <button class="btn sm ghost" onclick="App.export()">⭳ Εξαγωγή</button>
     <button class="btn sm ghost" onclick="document.getElementById('importFile').click()">⭱ Εισαγωγή</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="App.import(event)">
@@ -334,5 +378,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <script src="js/plays.js"></script>
 <script src="js/pitch.js"></script>
 <script src="js/app.js"></script>
+<script src="js/ux.js"></script>
 </body>
 </html>

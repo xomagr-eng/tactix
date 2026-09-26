@@ -53,6 +53,7 @@ const App = (() => {
       if(pl.weight==null) pl.weight=75;
       if(!pl.pastPositions) pl.pastPositions=[pl.pos];
       if(!pl.suitability) pl.suitability={[pl.pos]:"good"};
+      if(!pl.status) pl.status="fit";
       added=true;
     });
     if(added) save();
@@ -73,6 +74,18 @@ const App = (() => {
       p.form=a.ratings.slice(-5); });
   }
   function ratingColor(r){ return r>=8?"#fbbf24": r>=7?"#38bdf8": r>=6?"#f59e0b": r>0?"#ef4444":"#64748b"; }
+  /* Διαθεσιμότητα παικτών */
+  const STATUS={
+    fit:{t:"Διαθέσιμος", ic:"✅", c:"#22d3ee", chip:"b"},
+    doubtful:{t:"Αμφίβολος", ic:"⚠️", c:"#f59e0b", chip:"a"},
+    injured:{t:"Τραυματίας", ic:"🚑", c:"#ef4444", chip:"r"},
+    suspended:{t:"Τιμωρία", ic:"🟥", c:"#a855f7", chip:"p"}
+  };
+  const isAvailable=p=>!p.status||p.status==="fit"||p.status==="doubtful";
+  function statusBadge(p, small){
+    const s=STATUS[p.status]||STATUS.fit; if(p.status==="fit"||!p.status) return small?"":"";
+    return `<span class="chip ${s.chip}" style="font-size:${small?'10px':'11.5px'}" title="${esc(s.t)}${p.returnDate?' — επιστροφή '+fmtDate(p.returnDate):''}">${s.ic} ${esc(s.t)}</span>`;
+  }
   function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
 
   function demoMatch(){
@@ -168,6 +181,11 @@ const App = (() => {
       <div class="kpi"><div class="ic">🎂</div><div class="stat"><b>${ages.length?Math.round(avg(ages)):0}</b><span>Μ.Ο. ηλικίας</span></div></div>
       <div class="kpi"><div class="ic">🏆</div><div class="stat"><b>${w}-${d}-${l}</b><span>Ν-Ι-Η (${played.length} αγ.)</span></div></div>
     </div>
+    ${(()=>{ const out=DB.players.filter(p=>!isAvailable(p)); if(!out.length) return ""; return `
+    <div class="card" style="margin-bottom:16px;border-color:#7f1d1d;cursor:pointer" onclick="App.go('squad')">
+      <h3 style="margin:0">🚑 Θέματα Διαθεσιμότητας <span class="tag">${out.length}</span></h3>
+      <div class="pill-row" style="margin-top:8px">${out.map(p=>{const s=STATUS[p.status]||STATUS.fit;return `<span class="chip ${s.chip}">${s.ic} ${esc(shortName(p.name))}${p.returnDate?' · ↩ '+fmtDate(p.returnDate):''}</span>`;}).join("")}</div>
+    </div>`; })()}
 
     <div class="grid g2">
       <div class="card">
@@ -224,10 +242,12 @@ const App = (() => {
   const POS_ORDER = ["ΤΦ","ΣΤ","ΔΑ","ΑΑ","ΑΜ","ΚΜ","10","ΔΕ","ΑΕ","ΕΠ","F9"];
   function renderSquad(){
     const players = [...DB.players].sort((a,b)=>POS_ORDER.indexOf(a.pos)-POS_ORDER.indexOf(b.pos));
+    const out=DB.players.filter(p=>!isAvailable(p));
+    const availLine = out.length? ` · <span style="color:#ef4444">🚑 ${out.length} εκτός</span>` : ` · <span style="color:#22d3ee">όλοι διαθέσιμοι</span>`;
     $("#view-squad").innerHTML = `
       <div class="sectionhead">
         <h2>👥 Ρόστερ & Ανάλυση Παικτών</h2>
-        <div class="sub2">${DB.players.length} παίκτες</div>
+        <div class="sub2">${DB.players.length} παίκτες${availLine}</div>
         <div class="sp">
           <button class="btn sm ghost" onclick="App.importDataCoach()">🔗 DATA COACH</button>
           <button class="btn sm ghost" onclick="App.exportExcelRoster()">⬇ Excel</button>
@@ -237,13 +257,14 @@ const App = (() => {
       <div class="card">
         <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Παίκτης</th><th>Θέση</th><th class="center">Ηλικ.</th><th class="center">Υ/Β</th><th class="center">OVR</th>
+          <thead><tr><th>Παίκτης</th><th>Θέση</th><th class="center">Κατάσταση</th><th class="center">Ηλικ.</th><th class="center">Υ/Β</th><th class="center">OVR</th>
           <th>Φυσ. κατάσταση</th><th>Ηθικό</th><th class="center">Λεπτά</th><th class="center">Γκολ/Ασ</th><th></th></tr></thead>
           <tbody>${players.map(pl=>{
-            const o=ovr(pl);
-            return `<tr>
+            const o=ovr(pl); const st=STATUS[pl.status]||STATUS.fit;
+            return `<tr style="${!isAvailable(pl)?'opacity:.62':''}">
               <td><b>${esc(pl.name)}</b></td>
               <td><span class="chip">${esc(pl.pos)}</span></td>
+              <td class="center"><button class="btn sm ghost" title="Κλικ για αλλαγή κατάστασης" style="padding:3px 8px;color:${st.c}" onclick="App.cycleStatus('${pl.id}')">${st.ic} ${pl.status&&pl.status!=='fit'?esc(st.t):''}</button></td>
               <td class="center">${pl.age}</td>
               <td class="center" style="color:var(--mut);font-size:12px">${pl.height||'—'}<span style="color:var(--dim)">/</span>${pl.weight||'—'}</td>
               <td class="center"><b style="color:${attrColor(o)}">${o}</b></td>
@@ -261,6 +282,7 @@ const App = (() => {
       </div>`;
   }
   function bar(v,c){ v=Math.max(0,Math.min(100,v||0)); return `<div class="attr-bar" style="width:90px"><i style="width:${v}%;background:${c}"></i></div>`; }
+  function cycleStatus(id){ const order=["fit","doubtful","injured","suspended"]; const p=DB.players.find(x=>x.id===id); p.status=order[(order.indexOf(p.status||"fit")+1)%order.length]; if(p.status==="fit"){delete p.returnDate;delete p.statusNote;} save(); renderSquad(); }
   function suitabilityHTML(pl){
     const s=pl.suitability||{[pl.pos]:"good"};
     const groups={good:[],ok:[],no:[]};
@@ -327,6 +349,10 @@ const App = (() => {
         <div class="field"><label>Βάρος (kg)</label><input type="number" id="pWt" value="${pl?pl.weight:75}"></div>
         <div class="field"><label>Φυσ. κατάσταση %</label><input type="number" id="pFit" value="${pl?pl.fitness:90}"></div>
         <div class="field"><label>Ηθικό %</label><input type="number" id="pMor" value="${pl?pl.morale:80}"></div></div>
+      <div class="row"><div class="field"><label>🩺 Διαθεσιμότητα</label>
+          <select id="pStatus">${Object.entries(STATUS).map(([k,s])=>`<option value="${k}" ${((pl&&pl.status)||'fit')===k?'selected':''}>${s.ic} ${s.t}</option>`).join("")}</select></div>
+        <div class="field"><label>Αναμ. επιστροφή</label><input type="date" id="pReturn" value="${pl&&pl.returnDate?pl.returnDate:''}"></div>
+        <div class="field"><label>Σημείωση κατάστασης</label><input id="pStatusNote" value="${pl&&pl.statusNote?esc(pl.statusNote):''}" placeholder="π.χ. θλάση δικεφάλου"></div></div>
       <div class="field"><label>Θέσεις που έχει παίξει (χωρισμένες με κόμμα)</label>
         <input id="pPast" value="${pl?esc((pl.pastPositions||[]).join(', ')):''}" placeholder="π.χ. ΚΜ, 10, ΑΜ"></div>
       <div class="detail-block"><h4>Χαρακτηριστικά (1-20)</h4><div id="pAttrs">${attrRows}</div>
@@ -364,6 +390,7 @@ const App = (() => {
     const data={ name:$("#pName").value.trim()||"Παίκτης", pos, age:+$("#pAge").value||20,
       height:+$("#pHt").value||180, weight:+$("#pWt").value||75,
       pastPositions: past.length?past:[pos], suitability,
+      status:$("#pStatus").value||"fit", returnDate:$("#pReturn").value||"", statusNote:$("#pStatusNote").value.trim(),
       fitness:+$("#pFit").value||90, morale:+$("#pMor").value||80, attrs, notes:$("#pNotes").value.trim() };
     if(id){ Object.assign(DB.players.find(p=>p.id===id), data); }
     else { DB.players.push({ id:"pl_"+Math.random().toString(36).slice(2,9), minutes:0,goals:0,assists:0, ...data }); }
@@ -584,6 +611,7 @@ const App = (() => {
           <button class="btn pr-btn ${ballOn?"blue":"ghost"}" onclick="App.presentBall()" title="Εμφάνιση/κρύψιμο μπάλας">⚽ Μπάλα</button>
           <button class="btn pr-btn ghost" onclick="App.presentClear()" title="Καθαρισμός βελών">🗑️</button>
           <button class="btn pr-btn" onclick="App.presentArrows()">Βελάκια: ${arrows?"ON":"OFF"}</button>
+          <button class="btn primary pr-btn" onclick="App.presentAnim()" title="Οι παίκτες τρέχουν στα βελάκια">▶ Κίνηση</button>
           <button class="btn danger pr-btn" onclick="App.presentExit()">✕ Έξοδος</button>
         </div>
       </div>
@@ -610,6 +638,34 @@ const App = (() => {
   function presentTool(v){ state.present.tool=v; renderPresent(); }
   function presentBall(){ const t=DB.tactics.find(x=>x.id===state.present.id); if(t.ball) delete t.ball; else t.ball={x:50,y:50}; save(); renderPresent(); }
   function presentClear(){ const t=DB.tactics.find(x=>x.id===state.present.id); t.movements=[]; save(); renderPresent(); }
+
+  /* ---- Animation: οι παίκτες «τρέχουν» στα βελάκια ---- */
+  function animateBoard(svg, positions, arrows, ball){
+    if(!svg || !arrows || !arrows.length) return;
+    const movers=[], used=new Set();
+    arrows.forEach(a=>{
+      let bi=-1,bd=1e9; positions.forEach((p,i)=>{ if(used.has(i))return; const d=Math.hypot(p.x-a.from[0],p.y-a.from[1]); if(d<bd){bd=d;bi=i;} });
+      if(bi>=0 && bd<16){ used.add(bi); const g=svg.querySelector('.tok[data-i="'+bi+'"]'); if(g) movers.push({g, s:Pitch.toXY(positions[bi].x,positions[bi].y), e:Pitch.toXY(a.to[0],a.to[1])}); }
+    });
+    let ballAnim=null; const ballEl=svg.querySelector('.ball');
+    if(ballEl && ball){ const pass=arrows.find(a=>a.type==="pass")||arrows[0]; ballAnim={el:ballEl, s:Pitch.toXY(ball.x,ball.y), e:Pitch.toXY(pass.to[0],pass.to[1])}; }
+    if(!movers.length && !ballAnim) return;
+    const dur=1600, t0=performance.now();
+    (function frame(now){
+      const k=Math.min(1,(now-t0)/dur); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      movers.forEach(m=>m.g.setAttribute("transform",`translate(${m.s.x+(m.e.x-m.s.x)*e},${m.s.y+(m.e.y-m.s.y)*e})`));
+      if(ballAnim) ballAnim.el.setAttribute("transform",`translate(${ballAnim.s.x+(ballAnim.e.x-ballAnim.s.x)*e},${ballAnim.s.y+(ballAnim.e.y-ballAnim.s.y)*e})`);
+      if(k<1) requestAnimationFrame(frame);
+    })(t0);
+  }
+  function presentAnim(){
+    if(!state.present) return;
+    if(!state.present.arrows){ state.present.arrows=true; }
+    renderPresent();
+    const t=DB.tactics.find(x=>x.id===state.present.id);
+    const svg=$("#prPitch") && $("#prPitch").querySelector("svg");
+    requestAnimationFrame(()=>requestAnimationFrame(()=>animateBoard(svg, t.positions, t.movements||[], t.ball)));
+  }
 
   /* ---- Λευκός Πίνακας (Landscape, γραφίδα) — για το ημίχρονο (τακτικές & σχέδια) ---- */
   function boardParts(){
@@ -1422,18 +1478,21 @@ ul{margin:3pt 0}</style></head><body>${body}</body></html>`;
     const m=DB.matches.find(x=>x.id===matchId);
     const base=FORMATIONS[m.formation]||FORMATIONS["4-3-3"];
     const order={good:0, ok:1, "":2, no:3};
+    const avic=p=>isAvailable(p)?(p.status==="doubtful"?"⚠️ ":""):((STATUS[p.status]||STATUS.fit).ic+" ");
     const opts=(r,sel)=>{
-      const scored=DB.players.map(p=>({p, s:(p.suitability&&p.suitability[r])||(p.pos===r?"good":"")}));
-      scored.sort((a,b)=>(order[a.s]??2)-(order[b.s]??2) || a.p.name.localeCompare(b.p.name));
-      return `<option value="">— κενό —</option>`+scored.map(({p,s})=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${esc(p.name)} (${p.pos})${s==="good"?" ✓":s==="ok"?" ~":s==="no"?" ✕":""}</option>`).join("");
+      const scored=DB.players.map(p=>({p, s:(p.suitability&&p.suitability[r])||(p.pos===r?"good":""), un:isAvailable(p)?0:1}));
+      scored.sort((a,b)=>a.un-b.un || (order[a.s]??2)-(order[b.s]??2) || a.p.name.localeCompare(b.p.name));
+      return `<option value="">— κενό —</option>`+scored.map(({p,s})=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${avic(p)}${esc(p.name)} (${p.pos})${s==="good"?" ✓":s==="ok"?" ~":s==="no"?" ✕":""}</option>`).join("");
     };
     const rows=base.map((pp,i)=>`<div style="display:grid;grid-template-columns:46px 1fr;gap:6px;align-items:center;margin-bottom:5px">
         <span class="chip">${pp.r}</span>
         <select data-slot="${i}">${opts(pp.r, m.lineup&&m.lineup[i])}</select></div>`).join("");
+    const outNow=DB.players.filter(p=>!isAvailable(p));
     modal(`👥 Σύνθεση — ${esc(DB.club.short)} vs ${esc(m.opp)} <span class="chip">${esc(m.formation)}</span>`,
-      `<div class="detail-block"><h4>Ενδεκάδα (✓ Καλά · ~ Μέτρια · ✕ Ακατάλληλος για τη θέση)</h4>${rows}</div>
+      `${outNow.length?`<div class="sub" style="margin-bottom:8px;color:#fca5a5">🚑 Εκτός: ${outNow.map(p=>esc(shortName(p.name))+" ("+(STATUS[p.status]||STATUS.fit).t+")").join(", ")}</div>`:""}
+       <div class="detail-block"><h4>Ενδεκάδα (✓ Καλά · ~ Μέτρια · ✕ Ακατάλληλος · 🚑/🟥 μη διαθέσιμος)</h4>${rows}</div>
        <div class="detail-block"><h4>Πάγκος (Ctrl/Cmd+κλικ για πολλαπλή επιλογή)</h4>
-         <select multiple size="6" id="benchSel" style="height:auto">${DB.players.map(p=>`<option value="${p.id}" ${(m.bench||[]).includes(p.id)?"selected":""}>${esc(p.name)} (${p.pos})</option>`).join("")}</select></div>`,
+         <select multiple size="6" id="benchSel" style="height:auto">${DB.players.slice().sort((a,b)=>(isAvailable(a)?0:1)-(isAvailable(b)?0:1)).map(p=>`<option value="${p.id}" ${(m.bench||[]).includes(p.id)?"selected":""}>${avic(p)}${esc(p.name)} (${p.pos})</option>`).join("")}</select></div>`,
       `<button class="btn" onclick="App.closeModal()">Άκυρο</button>
        <button class="btn primary" onclick="App.saveLineup('${matchId}')">Αποθήκευση</button>`);
   }
@@ -1792,8 +1851,26 @@ ${(()=>{ const u = location.hostname.endsWith("github.io") ? "/datacoach-360/#br
     try{ const b=JSON.parse(localStorage.getItem(DC_INBOX)); if(b && (!DB.dcBridge || DB.dcBridge.at!==b.at)) setTimeout(()=>toast("🔗 Νέα δεδομένα από DATA COACH — Ρόστερ → «🔗 DATA COACH»"), 900); }catch(_){}
   }
 
+  /* ---------- Οθόνη: ύψος κεφαλίδας, πλήρης οθόνη, περιστροφή συσκευής ---------- */
+  function syncHeaderHeight(){ const h=document.querySelector("header"); if(h) document.documentElement.style.setProperty("--hdr", h.offsetHeight+"px"); }
+  function fullscreen(){
+    const d=document, el=d.documentElement;
+    if(d.fullscreenElement||d.webkitFullscreenElement) (d.exitFullscreen||d.webkitExitFullscreen).call(d);
+    else { const req=el.requestFullscreen||el.webkitRequestFullscreen; if(req) Promise.resolve(req.call(el)).catch(()=>toast("Η πλήρης οθόνη δεν υποστηρίζεται εδώ")); else toast("Πρόσθεσε το TACTIX στην αρχική οθόνη για πλήρη οθόνη"); }
+  }
+  function initScreen(){
+    syncHeaderHeight();
+    if(window.ResizeObserver){ const h=document.querySelector("header"); if(h) new ResizeObserver(syncHeaderHeight).observe(h); }
+    let t; const land=()=>matchMedia("(orientation: landscape)").matches; let last=land();
+    const redraw=()=>{ syncHeaderHeight(); const l=land(); if(l===last) return; last=l; if($("#modalBg").classList.contains("open")) return; const y=scrollY; try{ go(state.view); }catch(_){} requestAnimationFrame(()=>scrollTo(0,y)); };
+    addEventListener("resize",()=>{ clearTimeout(t); t=setTimeout(redraw,220); });
+    addEventListener("orientationchange",()=>setTimeout(redraw,300));
+    const fs=$("#fsBtn"); if(fs && !(document.fullscreenEnabled||document.webkitFullscreenEnabled)) fs.style.display="none";
+    document.addEventListener("fullscreenchange",()=>{ if(fs) fs.textContent=document.fullscreenElement?"🗗":"⛶"; });
+  }
+
   function init(){
-    load(); renderNav(); syncHeader(); checkDataCoachInbox();
+    load(); renderNav(); syncHeader(); checkDataCoachInbox(); initScreen();
     // λογότυπο κεφαλίδας + favicon
     const bl=$("#brandLogo"); if(bl) bl.innerHTML=LOGO_SVG();
     try{ const fav=$("#favicon"); if(fav) fav.href="data:image/svg+xml;utf8,"+encodeURIComponent(LOGO_SVG(64)); }catch(_){}
@@ -1805,14 +1882,14 @@ ${(()=>{ const u = location.hostname.endsWith("github.io") ? "/datacoach-360/#br
   }
 
   return {
-    init, go, closeModal, export:exportData, import:importData, importDataCoach, importDataCoachInbox,
+    init, go, closeModal, export:exportData, import:importData, fullscreen, importDataCoach, importDataCoachInbox,
     // squad
-    viewPlayer, editPlayer, savePlayer, delPlayer, addAttrRow,
+    viewPlayer, editPlayer, savePlayer, delPlayer, addAttrRow, cycleStatus,
     // tactics
     renderTactics, openTactic, tacTab, useTactic, newTactic, openDesigner, designerForm, saveTactic, delTactic,
     boardTool, clearArrows, setRole, dTool, dClearArrows, setDesignerRole, addOpp, cycleLabels,
     cycleOppSymbol, toggleOppColor, saveBoardImage, setNameXI, saveNameXI, clearNameXI,
-    present, presentNav, presentGo, presentArrows, presentExit, presentTool, presentBall, presentClear,
+    present, presentNav, presentGo, presentArrows, presentExit, presentTool, presentBall, presentClear, presentAnim,
     whiteboard, boardWTool, boardWBall, boardWOpp, boardWImage, boardWUndo, boardWClear, boardWExit,
     renderPlaybook, playCat, openPlay, playTool, playBall, playClear, playAddOpp, newPlay, savePlay, delPlay,
     presentPlay, presentPlayNav, presentPlayGo, presentPlayExit, printPlay, exportWordPlay,

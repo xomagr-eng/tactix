@@ -1,5 +1,5 @@
 /* TACTIX — Service Worker (offline cache) */
-const CACHE = "tactix-v9";
+const CACHE = "tactix-v10";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const ASSETS = [
   "./js/plays.js",
   "./js/pitch.js",
   "./js/app.js",
+  "./js/ux.js",
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png"
